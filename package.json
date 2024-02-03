@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "compile": "npx tealscript src/OrangeMiner.algo.ts build/",
+    "deploy": "yarn compile && bash ./scripts/deploy.sh",
+    "call": "bash ./scripts/call.sh",
+    "start": "bash ./scripts/run.sh"
+  },
+  "dependencies": {
+    "@algorandfoundation/tealscript": "^0.80.0",
+    "algosdk": "^2.7.0",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4"
+  }
+}
