@@ -1,12 +1,12 @@
-import algosdk from 'algosdk';
-import path from 'path';
-import fs, { stat } from 'fs';
-import dotenv from 'dotenv'
-import { fileURLToPath } from 'url';
+import algosdk from "algosdk";
+import path from "path";
+import fs, { stat } from "fs";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config()
+dotenv.config();
 
 const runner_mnemonic = process.env.MNEMONIC;
 const algod_address = process.env.ALGOD_SERVER;
@@ -14,16 +14,16 @@ const algodClient = new algosdk.Algodv2(
   process.env.ALGOD_TOKEN,
   algod_address,
   process.env.ALGOD_PORT,
-  { 'User-Agent': 'orange-pool-miner' },
+  { "User-Agent": "orange-pool-miner" }
 );
-const application_id = Number(process.env.APP_ID)
-const liquidation_amount = Number(process.env.LIQUIDATION_AMOUNT)
+const application_id = Number(process.env.APP_ID);
+const liquidation_amount = Number(process.env.LIQUIDATION_AMOUNT);
 
 const runner = algosdk.mnemonicToSecretKey(runner_mnemonic);
 const signer = algosdk.makeBasicAccountTransactionSigner(runner);
 
 let index = 0;
-let lastMiner = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
+let lastMiner = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ";
 let suggestedParams = null;
 
 let transactionsSent = 0;
@@ -38,12 +38,12 @@ async function mine(contract, app_id) {
       suggestedParams.flatFee = true;
       suggestedParams.fee = 1000;
       const miningApp = await algodClient.getApplicationByID(1284326447).do();
-      const globalState = miningApp.params['global-state'];
+      const globalState = miningApp.params["global-state"];
       const lastMinerKv = globalState.find(
-        kv => Buffer.from(kv.key, 'base64').toString() === 'last_miner',
+        (kv) => Buffer.from(kv.key, "base64").toString() === "last_miner"
       );
       lastMiner = algosdk.encodeAddress(
-        Buffer.from(lastMinerKv.value.bytes, 'base64'),
+        Buffer.from(lastMinerKv.value.bytes, "base64")
       );
     }
 
@@ -51,12 +51,12 @@ async function mine(contract, app_id) {
 
     atc.addMethodCall({
       appID: app_id,
-      method: contract.getMethodByName('mine'),
+      method: contract.getMethodByName("mine"),
       sender: runner.addr,
       appForeignApps: [1284326447, 1002541853],
       appForeignAssets: [1284444444, 1294765516],
       appAccounts: [
-        'TRCEY5UZGTATGTF5K3U42IMDT467D4EHV7S5MYJBMLMYARYJOZFATORMUM',
+        "TRCEY5UZGTATGTF5K3U42IMDT467D4EHV7S5MYJBMLMYARYJOZFATORMUM",
         lastMiner,
       ],
       boxes: [
@@ -71,8 +71,7 @@ async function mine(contract, app_id) {
     });
 
     await atc.execute(algodClient, 0);
-  } catch {
-  }
+  } catch {}
 
   transactionsSent += 1;
 
@@ -85,10 +84,10 @@ let block = 0;
 
 async function updateAppState(app_id) {
   const contractData = await algodClient.getApplicationByID(app_id).do();
-  contractData.params['global-state'].forEach(kv => {
-    const key = atob(kv['key']);
-    if (['spentPerToken', 'rewardPerToken'].includes(key)) {
-      const value = Uint8Array.from(Buffer.from(kv.value.bytes, 'base64'));
+  contractData.params["global-state"].forEach((kv) => {
+    const key = atob(kv["key"]);
+    if (["spentPerToken", "rewardPerToken"].includes(key)) {
+      const value = Uint8Array.from(Buffer.from(kv.value.bytes, "base64"));
       state[key] = algosdk.bytesToBigInt(value);
     } else {
       state[key] = kv.value.type === 1 ? kv.value.bytes : kv.value.uint;
@@ -96,7 +95,7 @@ async function updateAppState(app_id) {
   });
 }
 
-const decodeBox = boxData => {
+const decodeBox = (boxData) => {
   return {
     deposited: algosdk.decodeUint64(boxData.slice(0, 8)),
     depositedAt: algosdk.decodeUint64(boxData.slice(8, 16)),
@@ -126,7 +125,7 @@ async function liquidate(app_id, contract, address) {
     sp.fee = 3000;
     atc.addMethodCall({
       appID: app_id,
-      method: contract.getMethodByName('repay'),
+      method: contract.getMethodByName("repay"),
       sender: runner.addr,
       appForeignApps: [1284326447, 1002541853],
       appForeignAssets: [1284444444, 1294765516],
@@ -146,7 +145,7 @@ async function liquidate(app_id, contract, address) {
   } catch {}
 }
 
-const scale = Number('18446744073709551615');
+const scale = Number("18446744073709551615");
 
 async function checkLiquidations(app_id, contract) {
   const recentlySpent = state.totalSpent - state.lastSpent;
@@ -155,7 +154,7 @@ async function checkLiquidations(app_id, contract) {
       ? (recentlySpent * scale) / state.totalDeposited
       : 0;
   const spentPerToken = Number(state.spentPerToken) + recentlySpentPerToken;
-  Object.keys(balances).forEach(address => {
+  Object.keys(balances).forEach((address) => {
     const balance = balances[address];
     const spentDelta = spentPerToken - Number(balance.spentPerToken);
     const spentToDate = Math.ceil((balance.deposited * spentDelta) / scale);
@@ -174,7 +173,7 @@ async function updateBalance(app_id, address) {
       const response = await algodClient
         .getApplicationBoxByName(
           app_id,
-          algosdk.decodeAddress(address).publicKey,
+          algosdk.decodeAddress(address).publicKey
         )
         .do();
       balances[address] = decodeBox(response.value);
@@ -186,48 +185,43 @@ async function updateBalance(app_id, address) {
 
 async function catchupBalances(app_id) {
   const boxes = await algodClient.getApplicationBoxes(app_id).do();
-  const names = boxes.boxes.map(b => b.name);
+  const names = boxes.boxes.map((b) => b.name);
   for (let bName of names) {
     await updateBalance(app_id, algosdk.encodeAddress(bName));
   }
 }
 
-function onlyUnique(value, index, array) {
-  return array.indexOf(value) === index;
-}
-
 async function checkBlockBalances(app_id, block) {
   const blockData = await algodClient.block(block).do();
   const transactions = blockData.block.txns;
-  const addresses = [];
-  transactions.forEach(tx => {
-    if (tx.txn['type'] === 'appl' && tx.txn['apid'] === app_id) {
+  const addresses = new Set();
+  transactions.forEach((tx) => {
+    if (tx.txn["type"] === "appl" && tx.txn["apid"] === app_id) {
       if (tx?.dt?.lg) {
         const address = algosdk.encodeAddress(tx.txn.snd);
-        if (algosdk.isValidAddress(address)) addresses.push(address);
+        if (algosdk.isValidAddress(address)) addresses.add(address);
         const args = tx.txn.apaa;
-        args.forEach(arg => {
+        args.forEach((arg) => {
           const address = algosdk.encodeAddress(arg);
-          if (algosdk.isValidAddress(address)) addresses.push(address);
+          if (algosdk.isValidAddress(address)) addresses.add(address);
         });
       }
     }
   });
-  const filtered = addresses.filter(onlyUnique);
-  for (let i = 0; i < filtered.length; i += 5) {
-    const chunk = filtered.slice(i, i + 5);
-    const promises = [];
-    chunk.forEach(a => promises.push(updateBalance(app_id, a)));
+  const values = addresses.values();
+  for (let i = 0; i < values.length; i += 5) {
+    const chunk = values.slice(i, i + 5);
+    const promises = chunk.map((a) => updateBalance(app_id, a));
     Promise.all(promises);
   }
 }
 
 async function getLastBlock() {
   const status = await algodClient.status().do();
-  return status['last-round'];
+  return status["last-round"];
 }
 
-async function monitorBalances(app_id, contract) {
+const catchupBlocks = async (app_id, block) => {
   await updateAppState(app_id);
   const lastBlock = getLastBlock();
   while (lastBlock > block) {
@@ -235,18 +229,20 @@ async function monitorBalances(app_id, contract) {
     await checkBlockBalances(app_id, block);
     block += 1;
   }
-  while (true) {
-    console.log(`Checking block ${block}`);
-    try {
-      await algodClient.statusAfterBlock(block).do();
-      await updateAppState(app_id);
-      await checkBlockBalances(app_id, block);
-      await checkLiquidations(app_id, contract);
-      block += 1;
-    } catch (e) {
-      console.log(`Failed check for block ${block}: ${e}`);
-    }
+};
+
+async function monitorBalances(app_id, contract) {
+  console.log(`Checking block ${block}`);
+  try {
+    await algodClient.statusAfterBlock(block).do();
+    await updateAppState(app_id);
+    await checkBlockBalances(app_id, block);
+    await checkLiquidations(app_id, contract);
+    block += 1;
+  } catch (e) {
+    console.log(`Failed check for block ${block}: ${e}`);
   }
+  setImmediate(() => monitorBalances(app_id, contract));
 }
 
 async function main() {
@@ -254,21 +250,17 @@ async function main() {
 
   const app_id = application_id;
   const abi = JSON.parse(
-    fs.readFileSync(
-      path.join(__dirname, 'OrangeMiner.arc4.json'),
-      'utf8',
-    ),
+    fs.readFileSync(path.join(__dirname, "OrangeMiner.arc4.json"), "utf8")
   );
   const contract = new algosdk.ABIContract(abi);
 
   // starting mining
-  console.log(
-    `Starting to mine through ${app_id}...`,
-  );
+  console.log(`Starting to mine through ${app_id}...`);
   mine(contract, app_id);
 
   console.log(`Starting monitoring from round ${block}`);
   await catchupBalances(app_id);
+  await catchupBlocks(app_id, block);
   monitorBalances(app_id, contract);
 }
 
