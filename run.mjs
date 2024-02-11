@@ -208,7 +208,7 @@ async function checkBlockBalances(app_id, block) {
       }
     }
   });
-  const values = addresses.values();
+  const values = Array.from(addresses);
   for (let i = 0; i < values.length; i += 5) {
     const chunk = values.slice(i, i + 5);
     const promises = chunk.map((a) => updateBalance(app_id, a));
